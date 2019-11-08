@@ -85,13 +85,13 @@ RUN set -eux && \
 
 ARG MAJOR_VERSION=4.2
 ARG ZBX_VERSION=${MAJOR_VERSION}.8
-ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
+ARG ZBX_SOURCES=https://github.com/BGmot/zabbix.git
 ENV ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES}
 
 LABEL org.label-schema.usage="https://www.zabbix.com/documentation/${MAJOR_VERSION}/manual/installation/containers" \
       org.label-schema.version="${ZBX_VERSION}" \
       org.label-schema.vcs-url="${ZBX_SOURCES}" \
-      org.label-schema.docker.cmd="docker run --name zabbix-appliance -p 80:80 -p 10051:10051 -d zabbix-appliance:alpine-${ZBX_VERSION}"
+      org.label-schema.docker.cmd="docker run --name zabbix-appliance -p 80:80 -p 10051:10051 -d zabbix-appliance:alpine-${ZBX_VERSION}-bg"
 
 RUN set -eux && \
     apk add ${APK_FLAGS_DEV} --virtual build-dependencies \
@@ -113,8 +113,8 @@ RUN set -eux && \
             pcre-dev \
             unixodbc-dev && \
     cd /tmp/ && \
-    git clone ${ZBX_SOURCES} --branch ${ZBX_VERSION} --depth 1 --single-branch zabbix-${ZBX_VERSION} && \
-    cd /tmp/zabbix-${ZBX_VERSION} && \
+    git clone ${ZBX_SOURCES} --branch ${ZBX_VERSION}-bg --depth 1 --single-branch zabbix-${ZBX_VERSION}-bg && \
+    cd /tmp/zabbix-${ZBX_VERSION}-bg && \
     zabbix_revision=`git rev-parse --short HEAD` && \
     sed -i "s/{ZABBIX_REVISION}/$zabbix_revision/g" include/version.h && \
     sed -i "s/{ZABBIX_REVISION}/$zabbix_revision/g" include/version.h && \
@@ -153,7 +153,7 @@ RUN set -eux && \
     cat database/${ZBX_DB_TYPE}/images.sql >> database/${ZBX_DB_TYPE}/create.sql && \
     cat database/${ZBX_DB_TYPE}/data.sql >> database/${ZBX_DB_TYPE}/create.sql && \
     gzip database/${ZBX_DB_TYPE}/create.sql && \
-    cp /tmp/zabbix-${ZBX_VERSION}/database/${ZBX_DB_TYPE}/create.sql.gz /usr/share/doc/zabbix-${ZBX_TYPE}-${ZBX_DB_TYPE}/create.sql.gz && \
+    cp /tmp/zabbix-${ZBX_VERSION}-bg/database/${ZBX_DB_TYPE}/create.sql.gz /usr/share/doc/zabbix-${ZBX_TYPE}-${ZBX_DB_TYPE}/create.sql.gz && \
     mkdir -p /usr/sbin/zabbix_java/ && \
     cp -r src/zabbix_java/bin /usr/sbin/zabbix_java/ && \
     cp -r src/zabbix_java/lib /usr/sbin/zabbix_java/ && \
@@ -161,7 +161,7 @@ RUN set -eux && \
     cd /tmp/ && \
     rm -rf /tmp/zabbix-${ZBX_VERSION}/ && \
     cd /usr/share/ && \
-    git clone ${ZBX_SOURCES} --branch ${ZBX_VERSION} --depth 1 --single-branch zabbix-${ZBX_VERSION} && \
+    git clone ${ZBX_SOURCES} --branch ${ZBX_VERSION}-bg --depth 1 --single-branch zabbix-${ZBX_VERSION} && \
     mkdir /usr/share/zabbix/ && \
     cp -R /usr/share/zabbix-${ZBX_VERSION}/frontends/php/* /usr/share/zabbix/ && \
     rm -rf /usr/share/zabbix-${ZBX_VERSION}/ && \
@@ -170,7 +170,7 @@ RUN set -eux && \
     rm -rf tests && \
     ./locale/make_mo.sh && \
     cd /tmp/ && \
-    rm -rf /tmp/zabbix-${ZBX_VERSION}/ && \
+    rm -rf /tmp/zabbix-${ZBX_VERSION}-bg/ && \
     apk del ${APK_FLAGS_COMMON} --purge --no-network \
             build-dependencies && \
     rm -rf /var/cache/apk/*
