@@ -176,7 +176,8 @@ RUN set -eux && \
     chown --quiet -R nginx:nginx /usr/share/zabbix && \
     yum ${YUM_FLAGS_PERSISTENT} clean all && \
     rm -rf /var/cache/yum/ && \
-    chmod +x /sbin/tini
+    chmod +x /sbin/tini && \
+    ln -s /usr/bin/resolveip /usr/libexec/resolveip
 
 EXPOSE 80/TCP 443/TCP 10051/TCP
 
