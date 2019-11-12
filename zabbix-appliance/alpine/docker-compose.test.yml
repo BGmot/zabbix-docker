@@ -1,0 +1,3 @@
+sut:
+  build: .
+  command: sleep 60 && ps -C mysqld && ps -C zabbix_server && ps -C nginx
