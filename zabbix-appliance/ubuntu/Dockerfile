@@ -4,8 +4,8 @@ ARG APT_FLAGS_COMMON="-y"
 ARG APT_FLAGS_DEV="${APT_FLAGS_COMMON} --no-install-recommends"
 
 ARG MAJOR_VERSION=4.4
-ARG ZBX_VERSION=${MAJOR_VERSION}.1
-ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
+ARG ZBX_VERSION=${MAJOR_VERSION}.1-bg
+ARG ZBX_SOURCES=https://github.com/BGmot/zabbix.git
 ENV ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES} \
     LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8 TERM=xterm \
     MIBDIRS=/var/lib/snmp/mibs/ietf:/var/lib/snmp/mibs/iana:/usr/share/snmp/mibs:/var/lib/zabbix/mibs MIBS=+ALL \
@@ -88,8 +88,8 @@ ARG VCS_REF
 ARG APT_FLAGS_COMMON="-y"
 ARG APT_FLAGS_PERSISTENT="${APT_FLAGS_COMMON} --no-install-recommends"
 ARG MAJOR_VERSION=4.4
-ARG ZBX_VERSION=${MAJOR_VERSION}.1
-ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
+ARG ZBX_VERSION=${MAJOR_VERSION}.1-bg
+ARG ZBX_SOURCES=https://github.com/BGmot/zabbix.git
 ENV ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES} \
     LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8 TERM=xterm \
     MIBDIRS=/var/lib/snmp/mibs/ietf:/var/lib/snmp/mibs/iana:/usr/share/snmp/mibs:/var/lib/zabbix/mibs MIBS=+ALL \
@@ -230,6 +230,7 @@ COPY ["conf/etc/php/7.2/fpm/conf.d/99-zabbix.ini", "/etc/php/7.2/fpm/conf.d/"]
 COPY ["conf/etc/zabbix/zabbix_java_gateway_logback.xml", "/etc/zabbix/"]
 COPY ["conf/usr/sbin/zabbix_java_gateway", "/usr/sbin/"]
 COPY ["docker-entrypoint.sh", "/usr/bin/"]
+COPY ["test.sh", "/usr/bin/"]
 
 ENV ZBX_TYPE=appliance
 
