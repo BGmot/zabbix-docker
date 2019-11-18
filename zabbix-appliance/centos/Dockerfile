@@ -4,8 +4,8 @@ ARG YUM_FLAGS_COMMON="-y"
 ARG YUM_FLAGS_DEV="${YUM_FLAGS_COMMON}"
 
 ARG MAJOR_VERSION=4.4
-ARG ZBX_VERSION=${MAJOR_VERSION}.1
-ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
+ARG ZBX_VERSION=${MAJOR_VERSION}.1-bg
+ARG ZBX_SOURCES=https://github.com/BGmot/zabbix.git
 ENV ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES} \
     ZBX_TYPE=server ZBX_DB_TYPE=mysql ZBX_OPT_TYPE=nginx \
     MYSQL_ALLOW_EMPTY_PASSWORD=true ZBX_ADD_SERVER=true ZBX_ADD_WEB=true DB_SERVER_HOST=localhost MYSQL_USER=zabbix ZBX_ADD_JAVA_GATEWAY=true ZBX_JAVAGATEWAY_ENABLE=true ZBX_JAVAGATEWAY=localhost
@@ -82,8 +82,8 @@ ARG YUM_FLAGS_COMMON="-y"
 ARG YUM_FLAGS_PERSISTENT="${YUM_FLAGS_COMMON}"
 
 ARG MAJOR_VERSION=4.4
-ARG ZBX_VERSION=${MAJOR_VERSION}.1
-ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
+ARG ZBX_VERSION=${MAJOR_VERSION}.1-bg
+ARG ZBX_SOURCES=https://github.com/BGmot/zabbix.git
 ENV ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES} \
     TERM=xterm MIBDIRS=/usr/share/snmp/mibs:/var/lib/zabbix/mibs MIBS=+ALL \
     ZBX_TYPE=server ZBX_DB_TYPE=mysql ZBX_OPT_TYPE=nginx \
@@ -176,7 +176,8 @@ RUN set -eux && \
     chown --quiet -R nginx:nginx /usr/share/zabbix && \
     yum ${YUM_FLAGS_PERSISTENT} clean all && \
     rm -rf /var/cache/yum/ && \
-    chmod +x /sbin/tini
+    chmod +x /sbin/tini && \
+    test -f /usr/libexec/resolveip || ln -s /usr/bin/resolveip /usr/libexec/resolveip
 
 EXPOSE 80/TCP 443/TCP 10051/TCP
 
@@ -197,6 +198,7 @@ COPY ["conf/etc/php.d/99-zabbix.ini", "/etc/php.d/99-zabbix.ini"]
 COPY ["conf/etc/zabbix/zabbix_java_gateway_logback.xml", "/etc/zabbix/"]
 COPY ["conf/usr/sbin/zabbix_java_gateway", "/usr/sbin/"]
 COPY ["docker-entrypoint.sh", "/usr/bin/"]
+COPY ["test.sh", "/usr/bin/"]
 
 ENV ZBX_TYPE=appliance
 
