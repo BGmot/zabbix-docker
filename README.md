@@ -1,5 +1,13 @@
 ![logo](https://assets.zabbix.com/img/logo/zabbix_logo_500x131.png)
 
+# Why?
+
+This repository is a fork of https://github.com/zabbix/zabbix-docker.git with only purpose being to build Docker images of Zabbix appliance to test code from this repository https://github.com/BGmot/zabbix.git. Please read [README-bg](https://github.com/BGmot/zabbix/blob/4.4.1-bg/README-bg.md) for details.
+
+All development activities in this Repository happen in 4.X-bg branches.
+
+Only Zabbox appliance images Docker images are built and pushed to Docker Hub as the only purpose of these builds is to check that Zabbix server installation works as expected.
+
 # What is Zabbix?
 
 Zabbix is an enterprise-class open source distributed monitoring solution.
