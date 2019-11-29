@@ -159,7 +159,7 @@ check_variables_mysql() {
         DB_SERVER_ROOT_PASS=${MYSQL_ROOT_PASSWORD:-""}
     fi
 
-    [ -n "${MYSQL_USER}" ] && CREATE_ZBX_DB_USER=true
+    [ -n "${MYSQL_USER}" ] && [ "${USE_DB_ROOT_USER}" == "true" ] && CREATE_ZBX_DB_USER=true
 
     # If root password is not specified use provided credentials
     DB_SERVER_ROOT_USER=${DB_SERVER_ROOT_USER:-${MYSQL_USER}}
@@ -296,6 +296,7 @@ update_zbx_config() {
     update_config_var $ZBX_CONFIG "DataSenderFrequency" "${ZBX_DATASENDERFREQUENCY}"
 
     update_config_var $ZBX_CONFIG "StatsAllowedIP" "${ZBX_STATSALLOWEDIP}"
+    update_config_var $ZBX_CONFIG "StartPreprocessors" "${ZBX_STARTPREPROCESSORS}"
 
     update_config_var $ZBX_CONFIG "StartPollers" "${ZBX_STARTPOLLERS}"
     update_config_var $ZBX_CONFIG "StartIPMIPollers" "${ZBX_IPMIPOLLERS}"
@@ -348,17 +349,8 @@ update_zbx_config() {
     update_config_var $ZBX_CONFIG "AlertScriptsPath" "/usr/lib/zabbix/alertscripts"
     update_config_var $ZBX_CONFIG "ExternalScripts" "/usr/lib/zabbix/externalscripts"
 
-    # Possible few fping locations
-    if [ -f "/usr/bin/fping" ]; then
-        update_config_var $ZBX_CONFIG "FpingLocation" "/usr/bin/fping"
-    else
-        update_config_var $ZBX_CONFIG "FpingLocation" "/usr/sbin/fping"
-    fi
-    if [ -f "/usr/bin/fping6" ]; then
-        update_config_var $ZBX_CONFIG "Fping6Location" "/usr/bin/fping6"
-    else
-        update_config_var $ZBX_CONFIG "Fping6Location" "/usr/sbin/fping6"
-    fi
+    update_config_var $ZBX_CONFIG "FpingLocation" "/usr/sbin/fping"
+    update_config_var $ZBX_CONFIG "Fping6Location"
 
     update_config_var $ZBX_CONFIG "SSHKeyLocation" "$ZABBIX_USER_HOME_DIR/ssh_keys"
     update_config_var $ZBX_CONFIG "LogSlowQueries" "${ZBX_LOGSLOWQUERIES}"

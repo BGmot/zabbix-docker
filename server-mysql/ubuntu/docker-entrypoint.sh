@@ -270,7 +270,7 @@ check_variables_mysql() {
         DB_SERVER_ROOT_PASS=${MYSQL_ROOT_PASSWORD:-""}
     fi
 
-    [ -n "${MYSQL_USER}" ] && CREATE_ZBX_DB_USER=true
+    [ -n "${MYSQL_USER}" ] && [ "${USE_DB_ROOT_USER}" == "true" ] && CREATE_ZBX_DB_USER=true
 
     # If root password is not specified use provided credentials
     DB_SERVER_ROOT_USER=${DB_SERVER_ROOT_USER:-${MYSQL_USER}}
@@ -842,6 +842,11 @@ update_zbx_config() {
 
     update_config_var $ZBX_CONFIG "AlertScriptsPath" "/usr/lib/zabbix/alertscripts"
     update_config_var $ZBX_CONFIG "ExternalScripts" "/usr/lib/zabbix/externalscripts"
+
+    if [ -n "${ZBX_EXPORTFILESIZE}" ]; then
+        update_config_var $ZBX_CONFIG "ExportDir" "$ZABBIX_USER_HOME_DIR/export/"
+        update_config_var $ZBX_CONFIG "ExportFileSize" "{$ZBX_EXPORTFILESIZE}"
+    fi
 
     # Possible few fping locations
     if [ -f "/usr/bin/fping" ]; then

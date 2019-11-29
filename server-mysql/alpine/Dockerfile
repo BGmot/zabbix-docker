@@ -51,7 +51,7 @@ RUN set -eux && \
     rm -rf /var/cache/apk/*
 
 ARG MAJOR_VERSION=4.4
-ARG ZBX_VERSION=${MAJOR_VERSION}.1
+ARG ZBX_VERSION=${MAJOR_VERSION}.3
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
 
 ENV TERM=xterm ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES} \
@@ -130,6 +130,7 @@ WORKDIR /var/lib/zabbix
 
 VOLUME ["/usr/lib/zabbix/alertscripts", "/usr/lib/zabbix/externalscripts", "/var/lib/zabbix/enc", "/var/lib/zabbix/mibs", "/var/lib/zabbix/modules"]
 VOLUME ["/var/lib/zabbix/snmptraps", "/var/lib/zabbix/ssh_keys", "/var/lib/zabbix/ssl/certs", "/var/lib/zabbix/ssl/keys", "/var/lib/zabbix/ssl/ssl_ca"]
+VOLUME ["/var/lib/zabbix/export"]
 
 COPY ["docker-entrypoint.sh", "/usr/bin/"]
 
