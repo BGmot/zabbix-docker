@@ -84,7 +84,7 @@ RUN set -eux && \
     rm -rf /var/cache/apk/*
 
 ARG MAJOR_VERSION=4.4
-ARG ZBX_VERSION=${MAJOR_VERSION}.3-bg
+ARG ZBX_VERSION=${MAJOR_VERSION}.4-bg
 ARG ZBX_SOURCES=https://github.com/BGmot/zabbix.git
 ENV ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES}
 
@@ -113,6 +113,7 @@ RUN set -eux && \
             pcre-dev \
             unixodbc-dev && \
     cd /tmp/ && \
+    git config --global http.sslverify false && \
     git clone ${ZBX_SOURCES} --branch ${ZBX_VERSION} --depth 1 --single-branch zabbix-${ZBX_VERSION} && \
     cd /tmp/zabbix-${ZBX_VERSION} && \
     zabbix_revision=`git rev-parse --short HEAD` && \
@@ -145,9 +146,11 @@ RUN set -eux && \
     make -j"$(nproc)" -s dbschema && \
     make -j"$(nproc)" -s && \
     cp src/zabbix_${ZBX_TYPE}/zabbix_${ZBX_TYPE} /usr/sbin/zabbix_${ZBX_TYPE} && \
+    cp src/zabbix_agent/zabbix_agentd /usr/sbin/zabbix_agentd && \
     cp src/zabbix_get/zabbix_get /usr/bin/zabbix_get && \
     cp src/zabbix_sender/zabbix_sender /usr/bin/zabbix_sender && \
     cp conf/zabbix_${ZBX_TYPE}.conf /etc/zabbix/zabbix_${ZBX_TYPE}.conf && \
+    cp conf/zabbix_agentd.conf /etc/zabbix/zabbix_agentd.conf && \
     chown --quiet -R zabbix:root /etc/zabbix && \
     cat database/${ZBX_DB_TYPE}/schema.sql > database/${ZBX_DB_TYPE}/create.sql && \
     cat database/${ZBX_DB_TYPE}/images.sql >> database/${ZBX_DB_TYPE}/create.sql && \
