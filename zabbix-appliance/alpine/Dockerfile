@@ -84,7 +84,7 @@ RUN set -eux && \
     rm -rf /var/cache/apk/*
 
 ARG MAJOR_VERSION=4.4
-ARG ZBX_VERSION=${MAJOR_VERSION}.6-bg
+ARG ZBX_VERSION=${MAJOR_VERSION}.7-bg
 ARG ZBX_SOURCES=https://github.com/BGmot/zabbix.git
 ENV ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES}
 
