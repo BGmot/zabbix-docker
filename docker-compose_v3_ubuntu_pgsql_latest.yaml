@@ -6,7 +6,6 @@ services:
    - "10051:10051"
   volumes:
    - /etc/localtime:/etc/localtime:ro
-   - /etc/timezone:/etc/timezone:ro 
    - ./zbx_env/usr/lib/zabbix/alertscripts:/usr/lib/zabbix/alertscripts:ro
    - ./zbx_env/usr/lib/zabbix/externalscripts:/usr/lib/zabbix/externalscripts:ro
    - ./zbx_env/var/lib/zabbix/export:/var/lib/zabbix/export:rw
@@ -73,13 +72,12 @@ services:
    - "10061:10051"
   volumes:
    - /etc/localtime:/etc/localtime:ro
-   - /etc/timezone:/etc/timezone:ro 
    - ./zbx_env/usr/lib/zabbix/externalscripts:/usr/lib/zabbix/externalscripts:ro
    - ./zbx_env/var/lib/zabbix/modules:/var/lib/zabbix/modules:ro
    - ./zbx_env/var/lib/zabbix/enc:/var/lib/zabbix/enc:ro
    - ./zbx_env/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys:ro
    - ./zbx_env/var/lib/zabbix/mibs:/var/lib/zabbix/mibs:ro
-   - ./zbx_env/var/lib/zabbix/snmptraps:/var/lib/zabbix/snmptraps:ro
+   - snmptraps:/var/lib/zabbix/snmptraps:rw
   links:
    - zabbix-server:zabbix-server
    - zabbix-java-gateway:zabbix-java-gateway
@@ -123,13 +121,12 @@ services:
    - "10071:10051"
   volumes:
    - /etc/localtime:/etc/localtime:ro
-   - /etc/timezone:/etc/timezone:ro 
    - ./zbx_env/usr/lib/zabbix/externalscripts:/usr/lib/zabbix/externalscripts:ro
    - ./zbx_env/var/lib/zabbix/modules:/var/lib/zabbix/modules:ro
    - ./zbx_env/var/lib/zabbix/enc:/var/lib/zabbix/enc:ro
    - ./zbx_env/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys:ro
    - ./zbx_env/var/lib/zabbix/mibs:/var/lib/zabbix/mibs:ro
-   - ./zbx_env/var/lib/zabbix/snmptraps:/var/lib/zabbix/snmptraps:ro
+   - snmptraps:/var/lib/zabbix/snmptraps:rw
   links:
    - zabbix-server:zabbix-server
    - zabbix-java-gateway:zabbix-java-gateway
@@ -183,7 +180,6 @@ services:
    - zabbix-server:zabbix-server
   volumes:
    - /etc/localtime:/etc/localtime:ro
-   - /etc/timezone:/etc/timezone:ro
    - ./zbx_env/etc/ssl/apache2:/etc/ssl/apache2:ro
    - ./zbx_env/usr/share/zabbix/modules/:/usr/share/zabbix/modules/:ro
 #   - ./.ZBX_DB_CA_FILE:/run/secrets/root-ca.pem:ro
@@ -240,7 +236,6 @@ services:
    - zabbix-server:zabbix-server
   volumes:
    - /etc/localtime:/etc/localtime:ro
-   - /etc/timezone:/etc/timezone:ro
    - ./zbx_env/etc/ssl/nginx:/etc/ssl/nginx:ro
    - ./zbx_env/usr/share/zabbix/modules/:/usr/share/zabbix/modules/:ro
 #   - ./.ZBX_DB_CA_FILE:/run/secrets/root-ca.pem:ro
@@ -293,7 +288,6 @@ services:
    - "10050:10050"
   volumes:
    - /etc/localtime:/etc/localtime:ro
-   - /etc/timezone:/etc/timezone:ro
    - ./zbx_env/etc/zabbix/zabbix_agentd.d:/etc/zabbix/zabbix_agentd.d:ro
    - ./zbx_env/var/lib/zabbix/modules:/var/lib/zabbix/modules:ro
    - ./zbx_env/var/lib/zabbix/enc:/var/lib/zabbix/enc:ro
@@ -357,7 +351,7 @@ services:
   ports:
    - "162:1162/udp"
   volumes:
-   - ./zbx_env/var/lib/zabbix/snmptraps:/var/lib/zabbix/snmptraps:rw
+   - snmptraps:/var/lib/zabbix/snmptraps:rw
   deploy:
    resources:
     limits:
@@ -460,6 +454,9 @@ networks:
       driver: default
       config:
       - subnet: 172.16.239.0/24
+
+volumes:
+  snmptraps:
 
 secrets:
   MYSQL_USER:

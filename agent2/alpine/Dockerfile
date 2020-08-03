@@ -30,7 +30,7 @@ RUN set -eux && \
     rm -rf /var/cache/apk/*
 
 ARG MAJOR_VERSION=5.0
-ARG ZBX_VERSION=${MAJOR_VERSION}.1
+ARG ZBX_VERSION=${MAJOR_VERSION}.2
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
 
 ENV TERM=xterm ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES}
@@ -48,6 +48,7 @@ RUN set -eux && \
             make \
             git \
             pcre-dev \
+            openssl-dev \
             zlib-dev \
             coreutils && \
     cd /tmp/ && \
@@ -64,8 +65,8 @@ RUN set -eux && \
             --prefix=/usr \
             --sysconfdir=/etc/zabbix \
             --prefix=/usr \
+            --with-openssl \
             --enable-ipv6 \
-            --enable-static \
             --enable-agent2 \
             --enable-agent \
             --silent && \
