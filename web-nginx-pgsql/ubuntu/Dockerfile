@@ -1,4 +1,4 @@
-FROM ubuntu:bionic
+FROM ubuntu:focal
 
 LABEL org.opencontainers.image.title="Zabbix web-interface (Nginx, PostgreSQL)" \
       org.opencontainers.image.authors="Alexey Pustovalov <alexey.pustovalov@zabbix.com>" \
@@ -45,19 +45,19 @@ RUN set -eux && \
             curl \
             nginx \
             locales \
-            php7.2-bcmath \
-            php7.2-fpm \
-            php7.2-gd \
-            php7.2-json \
-            php7.2-ldap \
-            php7.2-mbstring \
-            php7.2-xml \
-            php7.2-pgsql \
+            php7.4-bcmath \
+            php7.4-fpm \
+            php7.4-gd \
+            php7.4-json \
+            php7.4-ldap \
+            php7.4-mbstring \
+            php7.4-xml \
+            php7.4-pgsql \
             postgresql-client \
             supervisor && \
     rm -f /etc/nginx/conf.d/*.conf && \
     rm -rf /var/cache/nginx/ && \
-    rm -f /etc/php/7.2/fpm/pool.d/www.conf && \
+    rm -f /etc/php/7.4/fpm/pool.d/www.conf && \
     ln -sf /dev/fd/2 /var/log/nginx/error.log && \
     DEBIAN_FRONTEND=noninteractive apt-get -y purge curl gpg dirmngr gpg-agent && \
     apt-get -y autoremove && \
@@ -65,7 +65,7 @@ RUN set -eux && \
     rm -rf /var/lib/apt/lists/*
 
 ARG MAJOR_VERSION=5.0
-ARG ZBX_VERSION=${MAJOR_VERSION}.2
+ARG ZBX_VERSION=${MAJOR_VERSION}.3
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
 
 ENV TERM=xterm ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES}
@@ -103,9 +103,9 @@ RUN set -eux && \
     chown --quiet -R zabbix:root /etc/zabbix/ /usr/share/zabbix/include/defines.inc.php /usr/share/zabbix/modules/ && \
     chgrp -R 0 /etc/zabbix/ /usr/share/zabbix/include/defines.inc.php /usr/share/zabbix/modules/ && \
     chmod -R g=u /etc/zabbix/ /usr/share/zabbix/include/defines.inc.php /usr/share/zabbix/modules/ && \
-    chown --quiet -R zabbix:root /etc/nginx/ /etc/php/7.2/fpm/php-fpm.conf /etc/php/7.2/fpm/pool.d/ && \
-    chgrp -R 0 /etc/nginx/ /etc/php/7.2/fpm/php-fpm.conf /etc/php/7.2/fpm/pool.d/ && \
-    chmod -R g=u /etc/nginx/ /etc/php/7.2/fpm/php-fpm.conf /etc/php/7.2/fpm/pool.d/ && \
+    chown --quiet -R zabbix:root /etc/nginx/ /etc/php/7.4/fpm/php-fpm.conf /etc/php/7.4/fpm/pool.d/ && \
+    chgrp -R 0 /etc/nginx/ /etc/php/7.4/fpm/php-fpm.conf /etc/php/7.4/fpm/pool.d/ && \
+    chmod -R g=u /etc/nginx/ /etc/php/7.4/fpm/php-fpm.conf /etc/php/7.4/fpm/pool.d/ && \
     chown --quiet -R zabbix:root /var/lib/php/session/ && \
     chgrp -R 0 /var/lib/php/session/ && \
     chmod -R g=u /var/lib/php/session/ && \
@@ -119,8 +119,6 @@ RUN set -eux && \
 EXPOSE 8080/TCP 8443/TCP
 
 WORKDIR /usr/share/zabbix
-
-VOLUME ["/etc/ssl/nginx"]
 
 COPY ["docker-entrypoint.sh", "/usr/bin/"]
 

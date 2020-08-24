@@ -1,4 +1,4 @@
-FROM alpine:3.11
+FROM alpine:3.12
 
 LABEL org.opencontainers.image.title="Zabbix web-interface (Apache, PostgreSQL)" \
       org.opencontainers.image.authors="Alexey Pustovalov <alexey.pustovalov@zabbix.com>" \
@@ -38,6 +38,7 @@ RUN set -eux && \
             php7-fileinfo \
             php7-xmlreader \
             php7-xmlwriter \
+            php7-openssl \
             postgresql-client && \
     apk add --clean-protected --no-cache --no-scripts apache2-ssl && \
     rm -f "/etc/apache2/conf.d/default.conf" && \
@@ -54,7 +55,7 @@ RUN set -eux && \
     rm -rf /var/cache/apk/*
 
 ARG MAJOR_VERSION=5.0
-ARG ZBX_VERSION=${MAJOR_VERSION}.2
+ARG ZBX_VERSION=${MAJOR_VERSION}.3
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
 
 ENV TERM=xterm ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES}
@@ -92,8 +93,6 @@ RUN set -eux && \
 EXPOSE 8080/TCP 8443/TCP
 
 WORKDIR /usr/share/zabbix
-
-VOLUME ["/etc/ssl/apache2", "/usr/share/zabbix/modules"]
 
 COPY ["docker-entrypoint.sh", "/usr/bin/"]
 

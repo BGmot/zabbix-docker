@@ -1,7 +1,7 @@
 FROM ubuntu:bionic
 
 ARG MAJOR_VERSION=5.0
-ARG ZBX_VERSION=${MAJOR_VERSION}.2
+ARG ZBX_VERSION=${MAJOR_VERSION}.3
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
 
 ENV TERM=xterm ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES} \
@@ -84,7 +84,7 @@ EXPOSE 1162/UDP
 
 WORKDIR /var/lib/zabbix/snmptraps/
 
-VOLUME ["/var/lib/zabbix/snmptraps", "/var/lib/zabbix/mibs"]
+VOLUME ["/var/lib/zabbix/snmptraps"]
 
 COPY ["conf/etc/supervisor/", "/etc/supervisor/"]
 COPY ["conf/etc/logrotate.d/zabbix_snmptraps", "/etc/logrotate.d/"]

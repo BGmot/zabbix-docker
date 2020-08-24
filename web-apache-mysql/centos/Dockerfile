@@ -48,7 +48,7 @@ RUN set -eux && \
     rm -rf /var/cache/dnf /etc/udev/hwdb.bin /root/.pki
 
 ARG MAJOR_VERSION=5.0
-ARG ZBX_VERSION=${MAJOR_VERSION}.2
+ARG ZBX_VERSION=${MAJOR_VERSION}.3
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
 
 ENV TERM=xterm ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES}
@@ -97,8 +97,6 @@ RUN set -eux && \
 EXPOSE 8080/TCP 8443/TCP
 
 WORKDIR /usr/share/zabbix
-
-VOLUME ["/etc/ssl/apache2", "/usr/share/zabbix/modules"]
 
 COPY ["docker-entrypoint.sh", "/usr/bin/"]
 

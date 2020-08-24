@@ -20,9 +20,6 @@ ZBX_SERVER_PORT=${ZBX_SERVER_PORT:-"10051"}
 # Default timezone for web interface
 PHP_TZ=${PHP_TZ:-"Europe/Riga"}
 
-#Enable PostgreSQL timescaleDB feature:
-ENABLE_TIMESCALEDB=${ENABLE_TIMESCALEDB:-"false"}
-
 # Default directories
 # User 'zabbix' home directory
 ZABBIX_USER_HOME_DIR="/var/lib/zabbix"
@@ -167,7 +164,7 @@ check_variables() {
     [ -n "${MYSQL_USER}" ] && CREATE_ZBX_DB_USER=true
 
     # If root password is not specified use provided credentials
-    : ${DB_SERVER_ROOT_USER:=${MYSQL_USER}}....
+    : ${DB_SERVER_ROOT_USER:=${MYSQL_USER}}
     [ "${MYSQL_ALLOW_EMPTY_PASSWORD}" == "true" ] || DB_SERVER_ROOT_PASS=${DB_SERVER_ROOT_PASS:-${MYSQL_PASSWORD}}
     DB_SERVER_ZBX_USER=${MYSQL_USER:-"zabbix"}
     DB_SERVER_ZBX_PASS=${MYSQL_PASSWORD:-"zabbix"}
@@ -231,7 +228,7 @@ prepare_zbx_web_config() {
     ZBX_WWW_ROOT="/usr/share/zabbix"
     ZBX_WEB_CONFIG="$ZABBIX_ETC_DIR/web/zabbix.conf.php"
 
-    PHP_CONFIG_FILE="/etc/php/7.2/fpm/pool.d/zabbix.conf"
+    PHP_CONFIG_FILE="/etc/php/7.4/fpm/pool.d/zabbix.conf"
 
     update_config_var "$PHP_CONFIG_FILE" "php_value[max_execution_time]" "${ZBX_MAXEXECUTIONTIME:-"600"}"
     update_config_var "$PHP_CONFIG_FILE" "php_value[memory_limit]" "${ZBX_MEMORYLIMIT:-"128M"}"

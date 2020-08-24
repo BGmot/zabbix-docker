@@ -1,4 +1,4 @@
-FROM ubuntu:bionic
+FROM ubuntu:focal
 
 LABEL org.opencontainers.image.title="Zabbix agent" \
       org.opencontainers.image.authors="Alexey Pustovalov <alexey.pustovalov@zabbix.com>" \
@@ -8,8 +8,6 @@ LABEL org.opencontainers.image.title="Zabbix agent" \
       org.opencontainers.image.licenses="GPL v2.0"
 
 STOPSIGNAL SIGTERM
-
-ENV TINI_VERSION=v0.19.0
 
 RUN set -eux && \
     echo "#!/bin/sh\nexit 0" > /usr/sbin/policy-rc.d && \
@@ -27,27 +25,17 @@ RUN set -eux && \
     mkdir -p /var/lib/zabbix/modules && \
     apt-get -y update && \
     DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install \
-            curl \
+            tini \
             ca-certificates \
-            gpg \
-            dirmngr \
-            gpg-agent \
             libssl1.1 \
             libcurl4 \
             libldap-2.4 && \
-    curl -L https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini -o /sbin/tini && \
-    curl -L https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini.asc -o /tini.asc && \
-    gpg --batch --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 595E85A6B1B4779EA4DAAEC70B588DFF0527A9B7 && \
-    gpg --batch --verify /tini.asc /sbin/tini && \
-    rm -rf /root/.gnupg && \
-    chmod +x /sbin/tini && \
-    apt-get -y purge curl gpg dirmngr gpg-agent && \
     apt-get -y autoremove && \
     apt-get -y clean && \
     rm -rf /var/lib/apt/lists/* 
 
 ARG MAJOR_VERSION=5.0
-ARG ZBX_VERSION=${MAJOR_VERSION}.2
+ARG ZBX_VERSION=${MAJOR_VERSION}.3
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
 
 ENV TERM=xterm ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES}
@@ -117,11 +105,9 @@ EXPOSE 10050/TCP
 
 WORKDIR /var/lib/zabbix
 
-VOLUME ["/etc/zabbix/zabbix_agentd.d", "/var/lib/zabbix/enc", "/var/lib/zabbix/modules"]
-
 COPY ["docker-entrypoint.sh", "/usr/bin/"]
 
-ENTRYPOINT ["/sbin/tini", "--", "/usr/bin/docker-entrypoint.sh"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/bin/docker-entrypoint.sh"]
 
 USER 1997
 

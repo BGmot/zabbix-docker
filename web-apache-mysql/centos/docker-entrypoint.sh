@@ -20,9 +20,6 @@ fi
 # Default timezone for web interface
 : ${PHP_TZ:="Europe/Riga"}
 
-#Enable PostgreSQL timescaleDB feature:
-ENABLE_TIMESCALEDB=${ENABLE_TIMESCALEDB:-"false"}
-
 # Default directories
 # Configuration files directory
 ZABBIX_ETC_DIR="/etc/zabbix"
@@ -222,6 +219,13 @@ prepare_zbx_web_config() {
     update_config_var "$PHP_CONFIG_FILE" "php_value[upload_max_filesize]" "${ZBX_UPLOADMAXFILESIZE:-"2M"}"
     update_config_var "$PHP_CONFIG_FILE" "php_value[max_input_time]" "${ZBX_MAXINPUTTIME:-"300"}"
     update_config_var "$PHP_CONFIG_FILE" "php_value[date.timezone]" "${PHP_TZ}"
+
+    if [ "$(id -u)" == '0' ]; then
+        echo "user = zabbix" >> "$PHP_CONFIG_FILE"
+        echo "group = zabbix" >> "$PHP_CONFIG_FILE"
+        echo "listen.owner = nginx" >> "$PHP_CONFIG_FILE"
+        echo "listen.group = nginx" >> "$PHP_CONFIG_FILE"
+    fi
 
     ZBX_HISTORYSTORAGETYPES=${ZBX_HISTORYSTORAGETYPES:-"[]"}
 

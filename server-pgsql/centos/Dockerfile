@@ -1,4 +1,4 @@
-FROM centos:centos7
+FROM centos:centos8
 
 LABEL org.opencontainers.image.title="Zabbix server (PostgreSQL)" \
       org.opencontainers.image.authors="Alexey Pustovalov <alexey.pustovalov@zabbix.com>" \
@@ -32,13 +32,14 @@ RUN set -eux && \
     mkdir -p /usr/lib/zabbix/alertscripts && \
     mkdir -p /usr/lib/zabbix/externalscripts && \
     mkdir -p /usr/share/doc/zabbix-server-postgresql && \
-    yum --quiet makecache && \
-    yum -y install --setopt=tsflags=nodocs https://repo.zabbix.com/non-supported/rhel/7/x86_64/fping-3.10-1.el7.x86_64.rpm && \
-    yum -y install --setopt=tsflags=nodocs \
+    dnf --quiet makecache && \
+    dnf -y install --setopt=tsflags=nodocs https://repo.zabbix.com/non-supported/rhel/7/x86_64/fping-3.10-1.el7.x86_64.rpm && \
+    dnf -y install --setopt=tsflags=nodocs \
             iputils \
             traceroute \
-            libcurl \
+            libcurl-minimal \
             libevent \
+            libssh \
             libxml2 \
             net-snmp-libs \
             OpenIPMI-libs \
@@ -48,18 +49,26 @@ RUN set -eux && \
             postgresql \
             postgresql-libs \
             unixODBC && \
-    curl -L https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini -o /sbin/tini && \
-    curl -L https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini.asc -o /tini.asc && \
-    gpg --batch --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 595E85A6B1B4779EA4DAAEC70B588DFF0527A9B7 && \
-    gpg --batch --verify /tini.asc /sbin/tini && \
-    rm -rf /root/.gnupg && \
+    curl -L "https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini" -o /sbin/tini && \
+    curl -L "https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini.asc" -o /tmp/tini.asc && \
+    export GNUPGHOME="$(mktemp -d)" && \
+    for server in $(shuf -e ha.pool.sks-keyservers.net \
+                            hkp://p80.pool.sks-keyservers.net:80 \
+                            ipv4.pool.sks-keyservers.net \
+                            keyserver.ubuntu.com \
+                            keyserver.pgp.com \
+                            pgp.mit.edu) ; do \
+        gpg --keyserver "$server" --recv-keys 595E85A6B1B4779EA4DAAEC70B588DFF0527A9B7 && break || : ; \
+    done && \
+    gpg --batch --verify /tmp/tini.asc /sbin/tini && \
+    rm -r "$GNUPGHOME" /tmp/tini.asc && \
     chmod +x /sbin/tini && \
-    yum -y clean all && \
+    dnf -y clean all && \
     rm -rf /var/cache/yum /var/lib/yum/yumdb/* /usr/lib/udev/hwdb.d/* && \
-    rm -rf /etc/udev/hwdb.bin /root/.pki
+    rm -rf /var/cache/dnf /etc/udev/hwdb.bin /root/.pki
 
 ARG MAJOR_VERSION=5.0
-ARG ZBX_VERSION=${MAJOR_VERSION}.2
+ARG ZBX_VERSION=${MAJOR_VERSION}.3
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
 
 ENV TERM=xterm MIBDIRS=/usr/share/snmp/mibs:/var/lib/zabbix/mibs MIBS=+ALL \
@@ -70,14 +79,16 @@ LABEL org.opencontainers.image.documentation="https://www.zabbix.com/documentati
       org.opencontainers.image.source="${ZBX_SOURCES}"
 
 RUN set -eux && \
-    yum --quiet makecache && \
-    yum -y install \
+    sed -i 's/enabled=0/enabled=1/g' /etc/yum.repos.d/CentOS-PowerTools.repo && \
+    dnf --quiet makecache && \
+    dnf -y install \
             autoconf \
             automake \
             gcc \
+            pcre-devel \
             libcurl-devel \
             libevent-devel \
-            libssh2-devel \
+            libssh-devel \
             libxml2-devel \
             make \
             net-snmp-devel \
@@ -107,7 +118,7 @@ RUN set -eux && \
             --with-net-snmp \
             --with-openipmi \
             --with-openssl \
-            --with-ssh2 \
+            --with-ssh \
             --with-unixodbc \
             --enable-ipv6 \
             --silent && \
@@ -128,19 +139,18 @@ RUN set -eux && \
     chown --quiet -R zabbix:root /etc/zabbix/ /var/lib/zabbix/ && \
     chgrp -R 0 /etc/zabbix/ /var/lib/zabbix/ && \
     chmod -R g=u /etc/zabbix/ /var/lib/zabbix/ && \
-    yum -y history undo `yum -q history | sed -n 3p |column -t | cut -d' ' -f1` && \
-    yum -y clean all && \
+    dnf -y history undo `dnf -q history | sed -n 3p |column -t | cut -d' ' -f1` && \
+    dnf -y clean all && \
+    sed -i 's/enabled=1/enabled=0/g' /etc/yum.repos.d/CentOS-PowerTools.repo && \
     rm -rf /var/cache/yum /var/lib/yum/yumdb/* /usr/lib/udev/hwdb.d/* && \
-    rm -rf /etc/udev/hwdb.bin /root/.pki
+    rm -rf /var/cache/dnf /etc/udev/hwdb.bin /root/.pki
 
 EXPOSE 10051/TCP
 
 WORKDIR /var/lib/zabbix
 
-VOLUME ["/usr/lib/zabbix/alertscripts", "/usr/lib/zabbix/externalscripts", "/var/lib/zabbix/enc", "/var/lib/zabbix/mibs", "/var/lib/zabbix/modules"]
-VOLUME ["/var/lib/zabbix/snmptraps", "/var/lib/zabbix/ssh_keys", "/var/lib/zabbix/ssl/certs", "/var/lib/zabbix/ssl/keys", "/var/lib/zabbix/ssl/ssl_ca"]
-VOLUME ["/var/lib/zabbix/export"]
-      
+VOLUME ["/var/lib/zabbix/snmptraps", "/var/lib/zabbix/export"]
+
 COPY ["docker-entrypoint.sh", "/usr/bin/"]
 
 ENTRYPOINT ["/sbin/tini", "--", "/usr/bin/docker-entrypoint.sh"]

@@ -1,4 +1,4 @@
-FROM alpine:3.11
+FROM alpine:3.12
 
 LABEL org.opencontainers.image.title="Zabbix agent" \
       org.opencontainers.image.authors="Alexey Pustovalov <alexey.pustovalov@zabbix.com>" \
@@ -32,7 +32,7 @@ RUN set -eux && \
     rm -rf /var/cache/apk/*
 
 ARG MAJOR_VERSION=5.0
-ARG ZBX_VERSION=${MAJOR_VERSION}.2
+ARG ZBX_VERSION=${MAJOR_VERSION}.3
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
 
 ENV TERM=xterm ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES}
@@ -89,8 +89,6 @@ RUN set -eux && \
 EXPOSE 10050/TCP
 
 WORKDIR /var/lib/zabbix
-
-VOLUME ["/etc/zabbix/zabbix_agentd.d", "/var/lib/zabbix/enc", "/var/lib/zabbix/modules"]
 
 COPY ["docker-entrypoint.sh", "/usr/bin/"]
 

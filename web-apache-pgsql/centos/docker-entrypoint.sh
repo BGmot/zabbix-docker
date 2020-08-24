@@ -174,17 +174,23 @@ check_db_connect() {
     fi
 
     if [ -n "${ZBX_DBTLSCONNECT}" ]; then
-        dbtlsconnect=${ZBX_DBTLSCONNECT//_/-}
-        ssl_opts="sslmode=$dbtlsconnect sslrootcert=${ZBX_DBTLSCAFILE} sslcert=${ZBX_DBTLSCERTFILE} sslkey=${ZBX_DBTLSKEYFILE}"
+        export PGSSLMODE=${ZBX_DBTLSCONNECT//_/-}
+        export PGSSLROOTCERT=${ZBX_DBTLSCAFILE}
+        export PGSSLCERT=${ZBX_DBTLSCERTFILE}
+        export PGSSLKEY=${ZBX_DBTLSKEYFILE}
     fi
 
-    while [ ! "$(psql "$ssl_opts" --host ${DB_SERVER_HOST} --port ${DB_SERVER_PORT} --username ${DB_SERVER_ROOT_USER} --dbname ${DB_SERVER_DBNAME} --list --quiet 2>/dev/null)" ]; do
+    while [ ! "$(psql --host ${DB_SERVER_HOST} --port ${DB_SERVER_PORT} --username ${DB_SERVER_ROOT_USER} --dbname ${DB_SERVER_DBNAME} --list --quiet 2>/dev/null)" ]; do
         echo "**** PostgreSQL server is not available. Waiting $WAIT_TIMEOUT seconds..."
         sleep $WAIT_TIMEOUT
     done
 
     unset PGPASSWORD
     unset PGOPTIONS
+    unset PGSSLMODE
+    unset PGSSLROOTCERT
+    unset PGSSLCERT
+    unset PGSSLKEY
 }
 
 prepare_web_server() {
@@ -224,6 +230,13 @@ prepare_zbx_web_config() {
     update_config_var "$PHP_CONFIG_FILE" "php_value[upload_max_filesize]" "${ZBX_UPLOADMAXFILESIZE:-"2M"}"
     update_config_var "$PHP_CONFIG_FILE" "php_value[max_input_time]" "${ZBX_MAXINPUTTIME:-"300"}"
     update_config_var "$PHP_CONFIG_FILE" "php_value[date.timezone]" "${PHP_TZ}"
+
+    if [ "$(id -u)" == '0' ]; then
+        echo "user = zabbix" >> "$PHP_CONFIG_FILE"
+        echo "group = zabbix" >> "$PHP_CONFIG_FILE"
+        echo "listen.owner = nginx" >> "$PHP_CONFIG_FILE"
+        echo "listen.group = nginx" >> "$PHP_CONFIG_FILE"
+    fi
 
     ZBX_HISTORYSTORAGETYPES=${ZBX_HISTORYSTORAGETYPES:-"[]"}
 
