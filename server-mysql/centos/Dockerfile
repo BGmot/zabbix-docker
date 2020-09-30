@@ -33,15 +33,18 @@ RUN set -eux && \
     mkdir -p /usr/lib/zabbix/externalscripts && \
     mkdir -p /usr/share/doc/zabbix-server-mysql && \
     dnf --quiet makecache && \
-    dnf -y install --setopt=tsflags=nodocs http://repo.zabbix.com/non-supported/rhel/8/x86_64/fping-3.16-1.el8.x86_64.rpm && \
-    dnf -y install --setopt=tsflags=nodocs \
+    dnf -y install epel-release && \
+    dnf -y install --setopt=tsflags=nodocs --setopt=install_weak_deps=False --best \
+            fping \
+            tzdata \
             iputils \
             traceroute \
             libcurl-minimal \
             libevent \
             libxml2 \
             libssh \
-            mariadb \
+            mysql \
+            mysql-libs \
             net-snmp-libs \
             OpenIPMI-libs \
             openldap \
@@ -60,14 +63,14 @@ RUN set -eux && \
         gpg --keyserver "$server" --recv-keys 595E85A6B1B4779EA4DAAEC70B588DFF0527A9B7 && break || : ; \
     done && \
     gpg --batch --verify /tmp/tini.asc /sbin/tini && \
-    rm -r "$GNUPGHOME" /tmp/tini.asc && \
+    rm -rf "$GNUPGHOME" /tmp/tini.asc && \
     chmod +x /sbin/tini && \
     dnf -y clean all && \
     rm -rf /var/cache/yum /var/lib/yum/yumdb/* /usr/lib/udev/hwdb.d/* && \
     rm -rf /var/cache/dnf /etc/udev/hwdb.bin /root/.pki
 
 ARG MAJOR_VERSION=5.0
-ARG ZBX_VERSION=${MAJOR_VERSION}.3
+ARG ZBX_VERSION=${MAJOR_VERSION}.4
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
 
 ENV TERM=xterm MIBDIRS=/usr/share/snmp/mibs:/var/lib/zabbix/mibs MIBS=+ALL \
@@ -80,7 +83,7 @@ LABEL org.opencontainers.image.documentation="https://www.zabbix.com/documentati
 RUN set -eux && \
     sed -i 's/enabled=0/enabled=1/g' /etc/yum.repos.d/CentOS-PowerTools.repo && \
     dnf --quiet makecache && \
-    dnf -y install --setopt=tsflags=nodocs \
+    dnf -y install --setopt=tsflags=nodocs --setopt=install_weak_deps=False --best \
             autoconf \
             automake \
             gcc \
@@ -90,7 +93,7 @@ RUN set -eux && \
             libssh-devel \
             libxml2-devel \
             make \
-            mariadb-devel \
+            mysql-devel \
             net-snmp-devel \
             OpenIPMI-devel \
             openldap-devel \

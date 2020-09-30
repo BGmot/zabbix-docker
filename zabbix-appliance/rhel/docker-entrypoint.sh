@@ -16,6 +16,10 @@ fi
 # Default timezone for web interface
 : ${PHP_TZ:="Europe/Riga"}
 
+# Default MySQL instance location
+: ${DB_SERVER_HOST:="localhost"}
+: ${DB_SERVER_PORT:="3306"}
+
 # Default directories
 # User 'zabbix' home directory
 ZABBIX_USER_HOME_DIR="/var/lib/zabbix"
@@ -55,49 +59,6 @@ file_env() {
     unset "$fileVar"
 }
 
-configure_db_mysql() {
-    [ "${DB_SERVER_HOST}" != "localhost" ] && return
-
-    echo "** Configuring local MySQL server"
-
-    MYSQL_ALLOW_EMPTY_PASSWORD=true
-    MYSQL_DATA_DIR="/var/lib/mysql"
-
-    MYSQL_CONF_FILE="/etc/my.cnf.d/mariadb-server.cnf"
-    DB_SERVER_SOCKET="/var/lib/mysql/mysql.sock"
-
-    MYSQLD=/usr/libexec/mysqld
-
-    sed -Ei 's/^(bind-address|log)/#&/' "$MYSQL_CONF_FILE"
-
-    if [ ! -d "$MYSQL_DATA_DIR/mysql" ]; then
-        [ -d "$MYSQL_DATA_DIR" ] || mkdir -p "$MYSQL_DATA_DIR"
-
-        echo "** Installing initial MySQL database schemas"
-        mysql_install_db --datadir="$MYSQL_DATA_DIR" 2>&1
-    else
-        echo "**** MySQL data directory is not empty. Using already existing installation."
-    fi
-
-    echo "** Starting MySQL server in background mode"
-
-    if [ "$(id -u)" == '0' ]; then
-        mysql_user="--user=zabbix"
-    fi
-
-    nohup $MYSQLD --basedir=/usr --datadir=/var/lib/mysql --plugin-dir=/usr/lib/mysql/plugin \
-            --log-output=none --pid-file=/var/lib/mysql/mysqld.pid \
-            --port=3306 --character-set-server=utf8 --collation-server=utf8_bin $mysql_user &
-}
-
-prepare_system() {
-    echo "** Preparing the system"
-
-    DB_SERVER_HOST=${DB_SERVER_HOST:-"localhost"}
-
-    configure_db_mysql
-}
-
 escape_spec_char() {
     local var_value=$1
 
@@ -121,12 +82,18 @@ update_config_var() {
     local var_value=$3
     local is_multiple=$4
 
+    local masklist=("DBPassword TLSPSKIdentity")
+
     if [ ! -f "$config_path" ]; then
         echo "**** Configuration file '$config_path' does not exist"
         return
     fi
 
-    echo -n "** Updating '$config_path' parameter \"$var_name\": '$var_value'... "
+    if [[ " ${masklist[@]} " =~ " $var_name " ]] && [ ! -z "$var_value" ]; then
+        echo -n "** Updating '$config_path' parameter \"$var_name\": '****'. Enable DEBUG_MODE to view value ..."
+    else
+        echo -n "** Updating '$config_path' parameter \"$var_name\": '$var_value'..."
+    fi
 
     # Remove configuration parameter definition in case of unset parameter value
     if [ -z "$var_value" ]; then
@@ -180,18 +147,60 @@ update_config_multiple_var() {
     done
 }
 
+configure_db_mysql() {
+    [ "${DB_SERVER_HOST}" != "localhost" ] && return
+
+    echo "** Configuring local MySQL server"
+
+    if [ -n "${ZBX_DBTLSCONNECT}" ]; then
+        echo "**** Encryption with local MySQL instance is not supported"
+        unset ZBX_DBTLSCONNECT
+    fi
+
+    MYSQL_ALLOW_EMPTY_PASSWORD=true
+    MYSQL_DATA_DIR="/var/lib/mysql"
+
+    MYSQL_CONF_FILE="/etc/my.cnf.d/mariadb-server.cnf"
+    DB_SERVER_SOCKET="/var/lib/mysql/mysql.sock"
+
+    MYSQLD=/usr/libexec/mysqld
+
+    if [ "$(id -u)" == '0' ]; then
+        mysql_user="--user=zabbix"
+    fi
+
+    sed -Ei 's/^(bind-address|log)/#&/' "$MYSQL_CONF_FILE"
+
+    if [ ! -d "$MYSQL_DATA_DIR/mysql" ]; then
+        [ -d "$MYSQL_DATA_DIR" ] || mkdir -p "$MYSQL_DATA_DIR"
+
+        echo "** Installing initial MySQL database schemas"
+        mysql_install_db $mysql_user --datadir="$MYSQL_DATA_DIR" 1>/dev/null
+    else
+        echo "**** MySQL data directory is not empty. Using already existing installation."
+    fi
+
+    echo "** Starting MySQL server in background mode"
+
+    nohup $MYSQLD --basedir=/usr --datadir=/var/lib/mysql --plugin-dir=/usr/lib/mysql/plugin \
+            --log-output=none --pid-file=/var/lib/mysql/mysqld.pid \
+            --port=3306 --character-set-server=utf8 --collation-server=utf8_bin $mysql_user &
+}
+
+prepare_system() {
+    echo "** Preparing the system"
+
+    configure_db_mysql
+}
+
 # Check prerequisites for MySQL database
 check_variables_mysql() {
-    DB_SERVER_HOST=${DB_SERVER_HOST:-"mysql-server"}
-    DB_SERVER_PORT=${DB_SERVER_PORT:-"3306"}
     USE_DB_ROOT_USER=false
     CREATE_ZBX_DB_USER=false
     file_env MYSQL_USER
     file_env MYSQL_PASSWORD
 
-    if [ "$type" != "" ]; then
-        file_env MYSQL_ROOT_PASSWORD
-    fi
+    file_env MYSQL_ROOT_PASSWORD
 
     if [ ! -n "${MYSQL_USER}" ] && [ "${MYSQL_RANDOM_ROOT_PASSWORD}" == "true" ]; then
         echo "**** Impossible to use MySQL server because of unknown Zabbix user and random 'root' password"
@@ -212,12 +221,38 @@ check_variables_mysql() {
     [ -n "${MYSQL_USER}" ] && CREATE_ZBX_DB_USER=true
 
     # If root password is not specified use provided credentials
-    DB_SERVER_ROOT_USER=${DB_SERVER_ROOT_USER:-${MYSQL_USER}}
+    : ${DB_SERVER_ROOT_USER:=${MYSQL_USER}}
     [ "${MYSQL_ALLOW_EMPTY_PASSWORD}" == "true" ] || DB_SERVER_ROOT_PASS=${DB_SERVER_ROOT_PASS:-${MYSQL_PASSWORD}}
     DB_SERVER_ZBX_USER=${MYSQL_USER:-"zabbix"}
     DB_SERVER_ZBX_PASS=${MYSQL_PASSWORD:-"zabbix"}
 
     DB_SERVER_DBNAME=${MYSQL_DATABASE:-"zabbix"}
+}
+
+db_tls_params() {
+    local result=""
+
+    if [ -n "${ZBX_DBTLSCONNECT}" ]; then
+        result="--ssl"
+
+        if [ "${ZBX_DBTLSCONNECT}" != "required" ]; then
+            result="${result} --ssl-verify-server-cert"
+        fi
+
+        if [ -n "${ZBX_DBTLSCAFILE}" ]; then
+            result="${result} --ssl-ca=${ZBX_DBTLSCAFILE}"
+        fi
+
+        if [ -n "${ZBX_DBTLSKEYFILE}" ]; then
+            result="${result} --ssl-key=${ZBX_DBTLSKEYFILE}"
+        fi
+
+        if [ -n "${ZBX_DBTLSCERTFILE}" ]; then
+            result="${result} --ssl-cert=${ZBX_DBTLSCERTFILE}"
+        fi
+    fi
+
+    echo $result
 }
 
 check_db_connect() {
@@ -232,15 +267,12 @@ check_db_connect() {
         fi
         echo "* DB_SERVER_ZBX_USER: ${DB_SERVER_ZBX_USER}"
         echo "* DB_SERVER_ZBX_PASS: ${DB_SERVER_ZBX_PASS}"
-        echo "********************"
     fi
     echo "********************"
 
     WAIT_TIMEOUT=5
 
-    if [ "${ZBX_DB_ENCRYPTION}" == "true" ]; then
-        ssl_opts="--ssl --ssl-ca=${ZBX_DB_CA_FILE} --ssl-key=${ZBX_DB_KEY_FILE} --ssl-cert=${ZBX_DB_CERT_FILE}"
-    fi
+    ssl_opts="$(db_tls_params)"
 
     while [ ! "$(mysqladmin ping -h ${DB_SERVER_HOST} -P ${DB_SERVER_PORT} -u ${DB_SERVER_ROOT_USER} \
                 --password="${DB_SERVER_ROOT_PASS}" --silent --connect_timeout=10 $ssl_opts)" ]; do
@@ -253,9 +285,7 @@ mysql_query() {
     query=$1
     local result=""
 
-    if [ -n "${ZBX_DBTLSCONNECT}" ]; then
-        ssl_opts="--ssl --ssl-ca=${ZBX_DBTLSCAFILE} --ssl-key=${ZBX_DBTLSKEYFILE} --ssl-cert=${ZBX_DBTLSCERTFILE}"
-    fi
+    ssl_opts="$(db_tls_params)"
 
     result=$(mysql --silent --skip-column-names -h ${DB_SERVER_HOST} -P ${DB_SERVER_PORT} \
              -u ${DB_SERVER_ROOT_USER} --password="${DB_SERVER_ROOT_PASS}" -e "$query" $ssl_opts)
@@ -303,9 +333,7 @@ create_db_schema_mysql() {
     if [ -z "${ZBX_DB_VERSION}" ]; then
         echo "** Creating '${DB_SERVER_DBNAME}' schema in MySQL"
 
-        if [ -n "${ZBX_DBTLSCONNECT}" ]; then
-            ssl_opts="--ssl --ssl-ca=${ZBX_DBTLSCAFILE} --ssl-key=${ZBX_DBTLSKEYFILE} --ssl-cert=${ZBX_DBTLSCERTFILE}"
-        fi
+        ssl_opts="$(db_tls_params)"
 
         zcat /usr/share/doc/zabbix-server-mysql/create.sql.gz | mysql --silent --skip-column-names \
                     -h ${DB_SERVER_HOST} -P ${DB_SERVER_PORT} \
@@ -338,17 +366,16 @@ prepare_web_server() {
     else
         echo "**** Impossible to enable SSL support for Nginx. Certificates are missed."
     fi
-
-    if [ -d "/var/log/nginx/" ]; then
-        ln -sf /dev/fd/2 /var/log/nginx/error.log
-    fi
 }
 
 stop_databases() {
     if [ "${DB_SERVER_HOST}" == "localhost" ]; then
+        echo "** Stopping MySQL instance after initial configuration"
         mysql_query "DELETE FROM mysql.user WHERE host = 'localhost' AND user != 'root'" 1>/dev/null
 
         kill -TERM $(cat /var/lib/mysql/mysqld.pid)
+    else
+        rm -f /etc/supervisor/conf.d/supervisord_mysql.conf
     fi
 }
 
@@ -480,6 +507,12 @@ update_zbx_config() {
     update_config_var $ZBX_CONFIG "TLSCRLFile" "${ZBX_TLSCRLFILE}"
 
     update_config_var $ZBX_CONFIG "TLSCertFile" "${ZBX_TLSCERTFILE}"
+    update_config_var $ZBX_CONFIG "TLSCipherAll" "${ZBX_TLSCIPHERALL}"
+    update_config_var $ZBX_CONFIG "TLSCipherAll13" "${ZBX_TLSCIPHERALL13}"
+    update_config_var $ZBX_CONFIG "TLSCipherCert" "${ZBX_TLSCIPHERCERT}"
+    update_config_var $ZBX_CONFIG "TLSCipherCert13" "${ZBX_TLSCIPHERCERT13}"
+    update_config_var $ZBX_CONFIG "TLSCipherPSK" "${ZBX_TLSCIPHERPSK}"
+    update_config_var $ZBX_CONFIG "TLSCipherPSK13" "${ZBX_TLSCIPHERPSK13}"
     update_config_var $ZBX_CONFIG "TLSKeyFile" "${ZBX_TLSKEYFILE}"
 
     update_config_var $ZBX_CONFIG "TLSPSKIdentity" "${ZBX_TLSPSKIDENTITY}"
@@ -494,21 +527,9 @@ update_zbx_config() {
 
 
 prepare_zbx_web_config() {
-    local server_name=""
-
     echo "** Preparing Zabbix frontend configuration file"
 
-    ZBX_WWW_ROOT="/usr/share/zabbix"
-    ZBX_WEB_CONFIG="$ZABBIX_ETC_DIR/web/zabbix.conf.php"
-
     PHP_CONFIG_FILE="/etc/php-fpm.d/zabbix.conf"
-
-    update_config_var "$PHP_CONFIG_FILE" "php_value[max_execution_time]" "${ZBX_MAXEXECUTIONTIME:-"600"}"
-    update_config_var "$PHP_CONFIG_FILE" "php_value[memory_limit]" "${ZBX_MEMORYLIMIT:-"128M"}"
-    update_config_var "$PHP_CONFIG_FILE" "php_value[post_max_size]" "${ZBX_POSTMAXSIZE:-"16M"}"
-    update_config_var "$PHP_CONFIG_FILE" "php_value[upload_max_filesize]" "${ZBX_UPLOADMAXFILESIZE:-"2M"}"
-    update_config_var "$PHP_CONFIG_FILE" "php_value[max_input_time]" "${ZBX_MAXINPUTTIME:-"300"}"
-    update_config_var "$PHP_CONFIG_FILE" "php_value[date.timezone]" "${PHP_TZ}"
 
     if [ "$(id -u)" == '0' ]; then
         echo "user = zabbix" >> "$PHP_CONFIG_FILE"
@@ -517,39 +538,40 @@ prepare_zbx_web_config() {
         echo "listen.group = nginx" >> "$PHP_CONFIG_FILE"
     fi
 
-    ZBX_HISTORYSTORAGETYPES=${ZBX_HISTORYSTORAGETYPES:-"[]"}
+    export ZBX_MAXEXECUTIONTIME=${ZBX_MAXEXECUTIONTIME:-"600"}
+    export ZBX_MEMORYLIMIT=${ZBX_MEMORYLIMIT:-"128M"}
+    export ZBX_POSTMAXSIZE=${ZBX_POSTMAXSIZE:-"16M"}
+    export ZBX_UPLOADMAXFILESIZE=${ZBX_UPLOADMAXFILESIZE:-"2M"}
+    export ZBX_MAXINPUTTIME=${ZBX_MAXINPUTTIME:-"300"}
+    export PHP_TZ=${PHP_TZ:-"Europe/Riga"}
 
-    # Escaping characters in parameter value
-    server_name=$(escape_spec_char "${ZBX_SERVER_NAME}")
-    server_user=$(escape_spec_char "${DB_SERVER_ZBX_USER}")
-    server_pass=$(escape_spec_char "${DB_SERVER_ZBX_PASS}")
-    history_storage_url=$(escape_spec_char "${ZBX_HISTORYSTORAGEURL}")
-    history_storage_types=$(escape_spec_char "${ZBX_HISTORYSTORAGETYPES}")
+    export DB_SERVER_TYPE="MYSQL"
+    export DB_SERVER_HOST=${DB_SERVER_HOST}
+    export DB_SERVER_PORT=${DB_SERVER_PORT}
+    export DB_SERVER_DBNAME=${DB_SERVER_DBNAME}
+    export DB_SERVER_SCHEMA=${DB_SERVER_SCHEMA}
+    export DB_SERVER_USER=${DB_SERVER_ZBX_USER}
+    export DB_SERVER_PASS=${DB_SERVER_ZBX_PASS}
+    export ZBX_SERVER_HOST="localhost"
+    export ZBX_SERVER_PORT="10051"
+    export ZBX_SERVER_NAME=${ZBX_SERVER_NAME}
 
-    sed -i \
-        -e "s/{DB_SERVER_HOST}/${DB_SERVER_HOST}/g" \
-        -e "s/{DB_SERVER_PORT}/${DB_SERVER_PORT}/g" \
-        -e "s/{DB_SERVER_DBNAME}/${DB_SERVER_DBNAME}/g" \
-        -e "s/{DB_SERVER_SCHEMA}/${DB_SERVER_SCHEMA}/g" \
-        -e "s/{DB_SERVER_USER}/$server_user/g" \
-        -e "s/{DB_SERVER_PASS}/$server_pass/g" \
-        -e "s/{ZBX_SERVER_HOST}/localhost/g" \
-        -e "s/{ZBX_SERVER_PORT}/10051/g" \
-        -e "s/{ZBX_SERVER_NAME}/$server_name/g" \
-        -e "s/{ZBX_DB_ENCRYPTION}/${ZBX_DB_ENCRYPTION:-"false"}/g" \
-        -e "s/{ZBX_DB_KEY_FILE}/${ZBX_DB_KEY_FILE}/g" \
-        -e "s/{ZBX_DB_CERT_FILE}/${ZBX_DB_CERT_FILE}/g" \
-        -e "s/{ZBX_DB_CA_FILE}/${ZBX_DB_CA_FILE}/g" \
-        -e "s/{ZBX_DB_VERIFY_HOST}/${ZBX_DB_VERIFY_HOST:-"false"}/g" \
-        -e "s/{ZBX_DB_CIPHER_LIST}/${ZBX_DB_CIPHER_LIST}/g" \
-        -e "s/{DB_DOUBLE_IEEE754}/${DB_DOUBLE_IEEE754:-"true"}/g" \
-        -e "s/{ZBX_HISTORYSTORAGEURL}/$history_storage_url/g" \
-        -e "s/{ZBX_HISTORYSTORAGETYPES}/$history_storage_types/g" \
-    "$ZBX_WEB_CONFIG"
-        
+    export ZBX_DB_ENCRYPTION=${ZBX_DB_ENCRYPTION:-"false"}
+    export ZBX_DB_KEY_FILE=${ZBX_DB_KEY_FILE}
+    export ZBX_DB_CERT_FILE=${ZBX_DB_CERT_FILE}
+    export ZBX_DB_CA_FILE=${ZBX_DB_CA_FILE}
+    export ZBX_DB_VERIFY_HOST=${ZBX_DB_VERIFY_HOST-"false"}
+
+    export DB_DOUBLE_IEEE754=${DB_DOUBLE_IEEE754:-"true"}
+
+    export ZBX_HISTORYSTORAGEURL=${ZBX_HISTORYSTORAGEURL}
+    export ZBX_HISTORYSTORAGETYPES=${ZBX_HISTORYSTORAGETYPES:-"[]"}
+
+    export ZBX_SSO_SETTINGS=${ZBX_SSO_SETTINGS:-""}
+
     if [ -n "${ZBX_SESSION_NAME}" ]; then
-        cp "$ZBX_WWW_ROOT/include/defines.inc.php" "/tmp/defines.inc.php_tmp"
-        sed "/ZBX_SESSION_NAME/s/'[^']*'/'${ZBX_SESSION_NAME}'/2" "/tmp/defines.inc.php_tmp" > "$ZBX_WWW_ROOT/include/defines.inc.php"
+        cp "$ZBX_FRONTEND_PATH/include/defines.inc.php" "/tmp/defines.inc.php_tmp"
+        sed "/ZBX_SESSION_NAME/s/'[^']*'/'${ZBX_SESSION_NAME}'/2" "/tmp/defines.inc.php_tmp" > "$ZBX_FRONTEND_PATH/include/defines.inc.php"
         rm -f "/tmp/defines.inc.php_tmp"
     fi
         

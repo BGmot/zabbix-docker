@@ -177,6 +177,32 @@ check_variables_mysql() {
     DB_SERVER_DBNAME=${MYSQL_DATABASE:-"zabbix_proxy"}
 }
 
+db_tls_params() {
+    local result=""
+
+    if [ -n "${ZBX_DBTLSCONNECT}" ]; then
+        result="--ssl"
+
+        if [ "${ZBX_DBTLSCONNECT}" != "required" ]; then
+            result="${result} --ssl-verify-server-cert"
+        fi
+
+        if [ -n "${ZBX_DBTLSCAFILE}" ]; then
+            result="${result} --ssl-ca=${ZBX_DBTLSCAFILE}"
+        fi
+
+        if [ -n "${ZBX_DBTLSKEYFILE}" ]; then
+            result="${result} --ssl-key=${ZBX_DBTLSKEYFILE}"
+        fi
+
+        if [ -n "${ZBX_DBTLSCERTFILE}" ]; then
+            result="${result} --ssl-cert=${ZBX_DBTLSCERTFILE}"
+        fi
+    fi
+
+    echo $result
+}
+
 check_db_connect_mysql() {
     echo "********************"
     echo "* DB_SERVER_HOST: ${DB_SERVER_HOST}"
@@ -194,27 +220,31 @@ check_db_connect_mysql() {
 
     WAIT_TIMEOUT=5
 
-    if [ -n "${ZBX_DBTLSCONNECT}" ]; then
-        ssl_opts="--ssl --ssl-ca=${ZBX_DBTLSCAFILE} --ssl-key=${ZBX_DBTLSKEYFILE} --ssl-cert=${ZBX_DBTLSCERTFILE}"
-    fi
+    ssl_opts="$(db_tls_params)"
+
+    export MYSQL_PWD="${DB_SERVER_ROOT_PASS}"
 
     while [ ! "$(mysqladmin ping -h ${DB_SERVER_HOST} -P ${DB_SERVER_PORT} -u ${DB_SERVER_ROOT_USER} \
-                --password="${DB_SERVER_ROOT_PASS}" --silent --connect_timeout=10 $ssl_opts)" ]; do
+                --silent --connect_timeout=10 $ssl_opts)" ]; do
         echo "**** MySQL server is not available. Waiting $WAIT_TIMEOUT seconds..."
         sleep $WAIT_TIMEOUT
     done
+
+    unset MYSQL_PWD
 }
 
 mysql_query() {
     query=$1
     local result=""
 
-    if [ -n "${ZBX_DBTLSCONNECT}" ]; then
-        ssl_opts="--ssl --ssl-ca=${ZBX_DBTLSCAFILE} --ssl-key=${ZBX_DBTLSKEYFILE} --ssl-cert=${ZBX_DBTLSCERTFILE}"
-    fi
+    ssl_opts="$(db_tls_params)"
+
+    export MYSQL_PWD="${DB_SERVER_ROOT_PASS}"
 
     result=$(mysql --silent --skip-column-names -h ${DB_SERVER_HOST} -P ${DB_SERVER_PORT} \
-             -u ${DB_SERVER_ROOT_USER} --password="${DB_SERVER_ROOT_PASS}" -e "$query" $ssl_opts)
+             -u ${DB_SERVER_ROOT_USER} -e "$query" $ssl_opts)
+
+    unset MYSQL_PWD
 
     echo $result
 }
@@ -259,14 +289,16 @@ create_db_schema_mysql() {
     if [ -z "${ZBX_DB_VERSION}" ]; then
         echo "** Creating '${DB_SERVER_DBNAME}' schema in MySQL"
 
-        if [ -n "${ZBX_DBTLSCONNECT}" ]; then
-            ssl_opts="--ssl --ssl-ca=${ZBX_DBTLSCAFILE} --ssl-key=${ZBX_DBTLSKEYFILE} --ssl-cert=${ZBX_DBTLSCERTFILE}"
-        fi
+        ssl_opts="$(db_tls_params)"
+
+        export MYSQL_PWD="${DB_SERVER_ROOT_PASS}"
 
         zcat /usr/share/doc/zabbix-proxy-mysql/create.sql.gz | mysql --silent --skip-column-names \
                     -h ${DB_SERVER_HOST} -P ${DB_SERVER_PORT} \
-                    -u ${DB_SERVER_ROOT_USER} --password="${DB_SERVER_ROOT_PASS}" $ssl_opts \
+                    -u ${DB_SERVER_ROOT_USER} $ssl_opts \
                     ${DB_SERVER_DBNAME} 1>/dev/null
+
+        unset MYSQL_PWD
     fi
 }
 

@@ -17,15 +17,16 @@ RUN set -eux && \
         zabbix && \
     mkdir -p /etc/zabbix/ && \
     mkdir -p /usr/sbin/zabbix_java/ && \
+    mkdir -p /usr/sbin/zabbix_java/ext_lib/ && \
     dnf --quiet makecache && \
-    dnf -y install --setopt=tsflags=nodocs \
+    dnf -y install --setopt=tsflags=nodocs --setopt=install_weak_deps=False --best \
             java-1.8.0-openjdk-headless && \
     dnf -y clean all && \
     rm -rf /var/cache/yum /var/lib/yum/yumdb/* /usr/lib/udev/hwdb.d/* && \
     rm -rf /var/cache/dnf /etc/udev/hwdb.bin /root/.pki
 
 ARG MAJOR_VERSION=5.0
-ARG ZBX_VERSION=${MAJOR_VERSION}.3
+ARG ZBX_VERSION=${MAJOR_VERSION}.4
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
 
 ENV TERM=xterm ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES}
@@ -38,7 +39,7 @@ COPY ["conf/etc/", "/etc/"]
 
 RUN set -eux && \
     dnf --quiet makecache && \
-    dnf -y install --setopt=tsflags=nodocs \
+    dnf -y install --setopt=tsflags=nodocs --setopt=install_weak_deps=False --best \
             autoconf \
             automake \
             java-1.8.0-openjdk-devel \

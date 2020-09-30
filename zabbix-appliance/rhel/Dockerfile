@@ -2,8 +2,8 @@ FROM registry.access.redhat.com/ubi8/ubi
 MAINTAINER Alexey Pustovalov <alexey.pustovalov@zabbix.com>
 
 ARG MAJOR_VERSION=5.0
-ARG RELEASE=3
-ARG ZBX_VERSION=${MAJOR_VERSION}.3
+ARG RELEASE=4
+ARG ZBX_VERSION=${MAJOR_VERSION}.4
 
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
 ENV TERM=xterm ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES} \
@@ -42,6 +42,7 @@ COPY ["conf/etc/yum.repo.d/nginx.repo", "/etc/yum.repos.d/nginx.repo"]
 COPY ["licenses", "/licenses"]
 
 RUN set -o xtrace && INSTALL_PKGS="OpenIPMI-libs \
+            tzdata \
             curl \
             fping \
             java-1.8.0-openjdk-headless \
@@ -67,11 +68,10 @@ RUN set -o xtrace && INSTALL_PKGS="OpenIPMI-libs \
             php-xml \
             python3-pip \
             unixODBC" && \
-    dnf -y install --disableplugin=subscription-manager --disablerepo "*" \
-        https://repo.zabbix.com/zabbix/${MAJOR_VERSION}/rhel/8/x86_64/zabbix-release-${MAJOR_VERSION}-1.el8.noarch.rpm && \
-    REPOLIST="rhel-8-for-x86_64-baseos-rpms,rhel-8-for-x86_64-appstream-rpms,zabbix-non-supported,nginx-stable" && \
+    REPOLIST="rhel-8-for-x86_64-baseos-rpms,rhel-8-for-x86_64-appstream-rpms,epel,nginx-stable" && \
     dnf -y update-minimal --disablerepo "*" --enablerepo ubi-8-baseos --setopt=tsflags=nodocs \
         --security --sec-severity=Important --sec-severity=Critical && \
+    dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
     dnf -y install --disablerepo "*" --enablerepo "${REPOLIST}" --setopt=install_weak_deps=False --best \
         --setopt=tsflags=nodocs ${INSTALL_PKGS} && \
     pip3 install supervisor && \
@@ -82,6 +82,8 @@ RUN set -o xtrace && INSTALL_PKGS="OpenIPMI-libs \
             -d /var/lib/zabbix/ -u 1997 \
         zabbix && \
     mkdir -p /etc/zabbix && \
+    mkdir -p /etc/zabbix/web && \
+    mkdir -p /etc/zabbix/web/certs && \
     mkdir -p /var/lib/zabbix && \
     mkdir -p /usr/lib/zabbix/alertscripts && \
     mkdir -p /var/lib/zabbix/enc && \
@@ -96,6 +98,7 @@ RUN set -o xtrace && INSTALL_PKGS="OpenIPMI-libs \
     mkdir -p /var/lib/zabbix/ssl/ssl_ca && \
     mkdir -p /usr/share/zabbix/ && \
     mkdir -p /usr/sbin/zabbix_java/ && \
+    mkdir -p /usr/sbin/zabbix_java/ext_lib/ && \
     mkdir -p /var/lib/php/ && \
     mkdir -p /usr/share/doc/zabbix-server-mysql/ && \
     curl -L https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini -o /sbin/tini && \
@@ -131,7 +134,7 @@ RUN set -eux && REPOLIST="rhel-8-for-x86_64-baseos-rpms,rhel-8-for-x86_64-appstr
             libssh-devel \
             libxml2-devel \
             make \
-            mariadb-devel \
+            mariadb-connector-c-devel \
             pcre-devel \
             net-snmp-devel \
 #            OpenIPMI-devel \
@@ -186,10 +189,12 @@ RUN set -eux && REPOLIST="rhel-8-for-x86_64-baseos-rpms,rhel-8-for-x86_64-appstr
     cd /tmp/ && \
     rm -rf /tmp/zabbix-${ZBX_VERSION}/ && \
     rm -f /usr/share/zabbix/conf/zabbix.conf.php && \
+    rm -f /usr/share/zabbix/conf/maintenance.inc.php && \
     rm -rf /usr/share/zabbix/tests/ && \
     cd /usr/share/zabbix/ && \
     ./locale/make_mo.sh && \
     ln -s "/etc/zabbix/web/zabbix.conf.php" "/usr/share/zabbix/conf/zabbix.conf.php" && \
+    ln -s "/etc/zabbix/web/maintenance.inc.php" "/usr/share/zabbix/conf/maintenance.inc.php" && \
     cat /usr/share/zabbix/include/locales.inc.php | grep display | grep true | awk '{$1=$1};1' | \
                 cut -d"'" -f 2 | sort | \
                 xargs -I '{}' bash -c 'echo "{}" && localedef -c -i {} -f UTF-8 {}.UTF-8 2>/dev/null' && \
@@ -202,8 +207,10 @@ RUN set -eux && REPOLIST="rhel-8-for-x86_64-baseos-rpms,rhel-8-for-x86_64-appstr
     chown --quiet -R zabbix:root /var/lib/mysql/ /var/lib/php/session/ && \
     chgrp -R 0 /var/lib/mysql/ /var/lib/php/session/ && \
     chmod -R g=u /var/lib/mysql/ /var/lib/php/session/ && \
+    chown --quiet -R zabbix:root /usr/share/zabbix/include/defines.inc.php && \
+    chgrp -R 0 /usr/share/zabbix/include/defines.inc.php && \
+    chmod -R g=u /usr/share/zabbix/include/defines.inc.php && \
     dnf -y history undo `dnf history list last -q | sed -n 3p |column -t | cut -d' ' -f1` && \
-    dnf -y erase glibc-locale-source glibc-langpack-en && \
     dnf -y clean all && \
     rm -rf /var/cache/yum /var/lib/yum/yumdb/* /usr/lib/udev/hwdb.d/* && \
     rm -rf /var/cache/dnf /etc/udev/hwdb.bin /root/.pki

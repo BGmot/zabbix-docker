@@ -23,6 +23,7 @@ RUN set -eux && \
     mkdir -p /var/lib/zabbix/modules && \
     apk add --no-cache --clean-protected \
             tini \
+            tzdata \
             bash \
             pcre \
             coreutils \
@@ -30,7 +31,7 @@ RUN set -eux && \
     rm -rf /var/cache/apk/*
 
 ARG MAJOR_VERSION=5.0
-ARG ZBX_VERSION=${MAJOR_VERSION}.3
+ARG ZBX_VERSION=${MAJOR_VERSION}.4
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
 
 ENV TERM=xterm ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES}
@@ -49,8 +50,7 @@ RUN set -eux && \
             git \
             pcre-dev \
             openssl-dev \
-            zlib-dev \
-            coreutils && \
+            zlib-dev && \
     cd /tmp/ && \
     git clone ${ZBX_SOURCES} --branch ${ZBX_VERSION} --depth 1 --single-branch zabbix-${ZBX_VERSION} && \
     cd /tmp/zabbix-${ZBX_VERSION} && \
@@ -75,6 +75,9 @@ RUN set -eux && \
     cp /tmp/zabbix-${ZBX_VERSION}/src/zabbix_get/zabbix_get /usr/bin/zabbix_get && \
     cp /tmp/zabbix-${ZBX_VERSION}/src/zabbix_sender/zabbix_sender /usr/bin/zabbix_sender && \
     cp /tmp/zabbix-${ZBX_VERSION}/src/go/conf/zabbix_agent2.conf /etc/zabbix/zabbix_agent2.conf && \
+    strip /usr/sbin/zabbix_agent2 && \
+    strip /usr/bin/zabbix_get && \
+    strip /usr/bin/zabbix_sender && \
     cd /tmp/ && \
     rm -rf /tmp/zabbix-${ZBX_VERSION}/ && \
     chown --quiet -R zabbix:root /etc/zabbix/ /var/lib/zabbix/ && \
