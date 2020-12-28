@@ -2,8 +2,8 @@ FROM registry.access.redhat.com/ubi8/ubi
 MAINTAINER Alexey Pustovalov <alexey.pustovalov@zabbix.com>
 
 ARG MAJOR_VERSION=5.2
-ARG RELEASE=2
-ARG ZBX_VERSION=${MAJOR_VERSION}.2
+ARG RELEASE=3
+ARG ZBX_VERSION=${MAJOR_VERSION}.3
 
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
 ENV TERM=xterm ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES} \
@@ -76,10 +76,13 @@ RUN set -o xtrace && INSTALL_PKGS="OpenIPMI-libs \
         --setopt=tsflags=nodocs ${INSTALL_PKGS} && \
     pip3 install supervisor && \
     ln -s /usr/local/bin/supervisord /usr/bin/supervisord && \
-    groupadd -g 1995 --system zabbix && \
-    adduser -r --shell /sbin/nologin \
-            -g zabbix -G dialout -G root \
-            -d /var/lib/zabbix/ -u 1997 \
+    groupadd --system --gid 1995 zabbix && \
+    useradd \
+            --system --comment "Zabbix monitoring system" \
+            -g zabbix -G root,dialout \
+            --uid 1997 \
+            --shell /sbin/nologin \
+            --home-dir /var/lib/zabbix/ \
         zabbix && \
     mkdir -p /etc/zabbix && \
     mkdir -p /var/lib/zabbix && \

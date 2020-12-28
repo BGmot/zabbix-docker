@@ -12,10 +12,13 @@ STOPSIGNAL SIGTERM
 ENV TINI_VERSION=v0.19.0
 
 RUN set -eux && \
-    groupadd -g 1995 --system zabbix && \
-    adduser -r --shell /sbin/nologin \
-            -g zabbix -G dialout -G root \
-            -d /var/lib/zabbix/ -u 1997 \
+    groupadd --system --gid 1995 zabbix && \
+    useradd \
+            --system --comment "Zabbix monitoring system" \
+            -g zabbix -G root,dialout \
+            --uid 1997 \
+            --shell /sbin/nologin \
+            --home-dir /var/lib/zabbix/ \
         zabbix && \
     mkdir -p /etc/zabbix && \
     mkdir -p /var/lib/zabbix && \
@@ -72,7 +75,7 @@ RUN set -eux && \
     rm -rf /var/cache/dnf /etc/udev/hwdb.bin /root/.pki
 
 ARG MAJOR_VERSION=5.2
-ARG ZBX_VERSION=${MAJOR_VERSION}.2
+ARG ZBX_VERSION=${MAJOR_VERSION}.3
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
 
 ENV TERM=xterm MIBDIRS=/usr/share/snmp/mibs:/var/lib/zabbix/mibs MIBS=+ALL \
@@ -83,7 +86,7 @@ LABEL org.opencontainers.image.documentation="https://www.zabbix.com/documentati
       org.opencontainers.image.source="${ZBX_SOURCES}"
 
 RUN set -eux && \
-    sed -i 's/enabled=0/enabled=1/g' /etc/yum.repos.d/CentOS-PowerTools.repo && \
+    sed -i 's/enabled=0/enabled=1/g' /etc/yum.repos.d/CentOS-Linux-PowerTools.repo && \
     dnf --quiet makecache && \
     dnf -y install --setopt=tsflags=nodocs --setopt=install_weak_deps=False --best \
             autoconf \
@@ -144,7 +147,7 @@ RUN set -eux && \
     chmod -R g=u /etc/zabbix/ /var/lib/zabbix/ && \
     dnf -y history undo `dnf -q history | sed -n 3p |column -t | cut -d' ' -f1` && \
     dnf -y clean all && \
-    sed -i 's/enabled=1/enabled=0/g' /etc/yum.repos.d/CentOS-PowerTools.repo && \
+    sed -i 's/enabled=1/enabled=0/g' /etc/yum.repos.d/CentOS-Linux-PowerTools.repo && \
     rm -rf /var/cache/yum /var/lib/yum/yumdb/* /usr/lib/udev/hwdb.d/* && \
     rm -rf /var/cache/dnf /etc/udev/hwdb.bin /root/.pki
 

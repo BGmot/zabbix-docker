@@ -10,14 +10,14 @@ LABEL org.opencontainers.image.title="Zabbix server (PostgreSQL)" \
 STOPSIGNAL SIGTERM
 
 RUN set -eux && \
-    addgroup --system --gid 1995 --quiet zabbix && \
-    adduser --quiet \
-            --system --disabled-login \
-            --ingroup zabbix --ingroup root \
+    groupadd --system --gid 1995 zabbix && \
+    useradd \
+            --system --comment "Zabbix monitoring system" \
+            -g zabbix -G root,dialout \
             --uid 1997 \
-            --home /var/lib/zabbix/ \
+            --shell /sbin/nologin \
+            --home-dir /var/lib/zabbix/ \
         zabbix && \
-    usermod -G zabbix,dialout zabbix && \
     mkdir -p /etc/zabbix && \
     mkdir -p /var/lib/zabbix && \
     mkdir -p /var/lib/zabbix/enc && \
@@ -58,7 +58,7 @@ RUN set -eux && \
     rm -rf /var/lib/apt/lists/*
 
 ARG MAJOR_VERSION=5.2
-ARG ZBX_VERSION=${MAJOR_VERSION}.2
+ARG ZBX_VERSION=${MAJOR_VERSION}.3
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
 
 ENV TERM=xterm MIBDIRS=/var/lib/snmp/mibs/ietf:/var/lib/snmp/mibs/iana:/usr/share/snmp/mibs:/var/lib/zabbix/mibs MIBS=+ALL \
