@@ -2,7 +2,7 @@
 
 # Why?
 
-This repository is a fork of https://github.com/zabbix/zabbix-docker.git with only purpose being to build Docker images of Zabbix appliance to test code from this repository https://github.com/BGmot/zabbix.git. Please read [README-bg](https://github.com/BGmot/zabbix/blob/5.0.6-bg/README-bg.md) for details.
+This repository is a fork of https://github.com/zabbix/zabbix-docker.git with only purpose being to build Docker images of Zabbix appliance to test code from this repository https://github.com/BGmot/zabbix.git. Please read [README-bg](https://github.com/BGmot/zabbix/blob/5.0.8-bg/README-bg.md) for details.
 
 All development activities in this Repository happen in 5.X-bg branches.
 
