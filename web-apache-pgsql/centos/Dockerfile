@@ -10,10 +10,13 @@ LABEL org.opencontainers.image.title="Zabbix web-interface (Apache, PostgreSQL)"
 STOPSIGNAL SIGTERM
 
 RUN set -eux && \
-    groupadd -g 1995 --system zabbix && \
-    adduser -r --shell /sbin/nologin \
+    groupadd --system --gid 1995 zabbix && \
+    useradd \
+            --system --comment "Zabbix monitoring system" \
             -g zabbix -G root \
-            -d /var/lib/zabbix/ -u 1997 \
+            --uid 1997 \
+            --shell /sbin/nologin \
+            --home-dir /var/lib/zabbix/ \
         zabbix && \
     mkdir -p /etc/zabbix && \
     mkdir -p /etc/zabbix/web && \
@@ -49,7 +52,7 @@ RUN set -eux && \
     rm -rf /var/cache/dnf /etc/udev/hwdb.bin /root/.pki 
 
 ARG MAJOR_VERSION=5.0
-ARG ZBX_VERSION=${MAJOR_VERSION}.5
+ARG ZBX_VERSION=${MAJOR_VERSION}.8
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
 
 ENV TERM=xterm ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES}

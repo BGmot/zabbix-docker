@@ -10,12 +10,16 @@ LABEL org.opencontainers.image.title="Zabbix agent 2" \
 STOPSIGNAL SIGTERM
 
 RUN set -eux && \
-    addgroup -S -g 1995 zabbix && \
-    adduser -S \
-            -D -G zabbix -G root \
-            -u 1997 \
-            -h /var/lib/zabbix/ \
+    addgroup --system --gid 1995 zabbix && \
+    adduser --system \
+            --gecos "Zabbix monitoring system" \
+            --disabled-password \
+            --uid 1997 \
+            --ingroup zabbix \
+            --shell /sbin/nologin \
+            --home /var/lib/zabbix/ \
         zabbix && \
+    adduser zabbix root && \
     mkdir -p /etc/zabbix && \
     mkdir -p /etc/zabbix/zabbix_agentd.d && \
     mkdir -p /var/lib/zabbix && \
@@ -31,7 +35,7 @@ RUN set -eux && \
     rm -rf /var/cache/apk/*
 
 ARG MAJOR_VERSION=5.0
-ARG ZBX_VERSION=${MAJOR_VERSION}.5
+ARG ZBX_VERSION=${MAJOR_VERSION}.8
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
 
 ENV TERM=xterm ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES}
