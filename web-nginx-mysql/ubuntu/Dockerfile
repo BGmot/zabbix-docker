@@ -10,6 +10,7 @@ LABEL org.opencontainers.image.title="Zabbix web-interface (Nginx, MySQL)" \
 STOPSIGNAL SIGTERM
 
 RUN set -eux && \
+    echo "#!/bin/sh\nexit 101" > /usr/sbin/policy-rc.d && \
     groupadd --system --gid 1995 zabbix && \
     useradd \
             --system --comment "Zabbix monitoring system" \
@@ -66,7 +67,7 @@ RUN set -eux && \
     rm -rf /var/lib/apt/lists/*
 
 ARG MAJOR_VERSION=5.2
-ARG ZBX_VERSION=${MAJOR_VERSION}.3
+ARG ZBX_VERSION=${MAJOR_VERSION}.4
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
 
 ENV TERM=xterm ZBX_VERSION=${ZBX_VERSION} ZBX_SOURCES=${ZBX_SOURCES}

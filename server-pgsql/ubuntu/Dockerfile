@@ -10,6 +10,17 @@ LABEL org.opencontainers.image.title="Zabbix server (PostgreSQL)" \
 STOPSIGNAL SIGTERM
 
 RUN set -eux && \
+    ARCH_SUFFIX="$(arch)"; \
+    case "$ARCH_SUFFIX" in \
+        i686) export ARCH_SUFFIX='i386' ;; \
+        x86_64) [ -f /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 ] && export ARCH_SUFFIX='amd64' || export ARCH_SUFFIX='i386' ;; \
+        aarch64) export ARCH_SUFFIX='arm64' ;; \
+        armv7l) export ARCH_SUFFIX='armhf' ;; \
+        ppc64el|ppc64le) export ARCH_SUFFIX='ppc64le' ;; \
+        s390x) export ARCH_SUFFIX='s390x' ;; \
+        *) echo "Unknown ARCH_SUFFIX=${ARCH_SUFFIX-}"; exit 1 ;; \                                  
+    esac; \                                                                                         
+    echo "#!/bin/sh\nexit 101" > /usr/sbin/policy-rc.d && \
     groupadd --system --gid 1995 zabbix && \
     useradd \
             --system --comment "Zabbix monitoring system" \
@@ -58,7 +69,7 @@ RUN set -eux && \
     rm -rf /var/lib/apt/lists/*
 
 ARG MAJOR_VERSION=5.2
-ARG ZBX_VERSION=${MAJOR_VERSION}.3
+ARG ZBX_VERSION=${MAJOR_VERSION}.4
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
 
 ENV TERM=xterm MIBDIRS=/var/lib/snmp/mibs/ietf:/var/lib/snmp/mibs/iana:/usr/share/snmp/mibs:/var/lib/zabbix/mibs MIBS=+ALL \
